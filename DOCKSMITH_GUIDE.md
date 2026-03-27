@@ -1,7 +1,7 @@
 # 🛠️ Docksmith — Complete Demo & Learning Guide
 
 > A Docker-like build and container runtime built from scratch in Go.
-> Written by Kushal | GitHub: https://github.com/kushalkumarcs372/Docksmith
+> GitHub: https://github.com/kushalkumarcs372/Docksmith
 
 ---
 
@@ -329,35 +329,6 @@ So the binary re-executes itself — but this time inside the namespace.
 
 ---
 
-## ❓ Panel Questions & Answers
-
-**Q: How is this different from Docker?**
-> Docker has a daemon, supports networking, image registries, and resource limits.
-> Docksmith implements the core concepts — layered builds, content-addressed storage,
-> and namespace isolation — as a single binary with no daemon.
-
-**Q: What is a Linux namespace?**
-> A kernel feature that gives a process its own isolated view of system resources.
-> PID namespace = own process tree. Mount namespace = own filesystem. UTS = own hostname.
-
-**Q: What is content-addressed storage?**
-> Files are named by their SHA-256 hash. Identical content = identical name = stored once.
-> Same concept as Git objects. Enables deduplication and integrity verification.
-
-**Q: What is cache cascade?**
-> Once any build step is a cache miss, all steps below it are forced to be misses too.
-> This prevents a new layer from being built on top of a stale cached layer.
-
-**Q: Why use /proc/self/exe for isolation?**
-> It's the re-exec pattern. The binary runs itself again but with namespace clone flags,
-> so the child process starts already inside the new namespaces before chroot is called.
-> This is the same pattern used by runc and Docker's containerd-shim.
-
-**Q: Are builds reproducible?**
-> Yes. Tar entries are added in sorted order with timestamps zeroed.
-> Same files + same instructions = identical SHA-256 layer digests every time.
-
----
 
 ## 📁 State Directory Layout
 
