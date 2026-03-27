@@ -1,0 +1,7 @@
+FROM alpine:3.18
+WORKDIR /app
+ENV GREETING=Hello
+ENV AUTHOR=Docksmith
+COPY app.sh /app/
+RUN chmod +x /app/app.sh
+CMD ["/bin/sh", "/app/app.sh"]

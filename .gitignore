@@ -1,0 +1,4 @@
+docksmith
+*.tar.gz
+go1.*
+.docksmith/
