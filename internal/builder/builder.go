@@ -90,6 +90,14 @@ func createLayer(srcDir string, files []string) (string, int64, error) {
 		hdr.ModTime = time.Time{}
 		hdr.AccessTime = time.Time{}
 		hdr.ChangeTime = time.Time{}
+			hdr.Uid = 0
+			hdr.Gid = 0
+			hdr.Uname = ""
+			hdr.Gname = ""
+			hdr.Uid = 0
+			hdr.Gid = 0
+			hdr.Uname = ""
+			hdr.Gname = ""
 		if err := tw.WriteHeader(hdr); err != nil {
 			return "", 0, err
 		}
@@ -124,6 +132,27 @@ func createLayer(srcDir string, files []string) (string, int64, error) {
 
 
 
+func matchesPattern(pattern, rel string) bool {
+	if strings.Contains(pattern, "**") {
+		prefix := strings.TrimSuffix(strings.Split(pattern, "**")[0], "/")
+		suffix := strings.TrimPrefix(strings.Split(pattern, "**")[1], "/")
+		if prefix != "" && !strings.HasPrefix(rel, prefix) {
+			return false
+		}
+		if suffix != "" {
+			return strings.HasSuffix(rel, suffix)
+		}
+		return true
+	}
+	if m, _ := filepath.Match(pattern, rel); m {
+		return true
+	}
+	if m, _ := filepath.Match(pattern, filepath.Base(rel)); m {
+		return true
+	}
+	return false
+}
+
 func globFiles(contextDir, pattern string) ([]string, error) {
 	var matches []string
 	err := filepath.WalkDir(contextDir, func(path string, d fs.DirEntry, err error) error {
@@ -131,11 +160,10 @@ func globFiles(contextDir, pattern string) ([]string, error) {
 			return err
 		}
 		rel, _ := filepath.Rel(contextDir, path)
-		matched, _ := filepath.Match(pattern, rel)
-		if !matched {
-			matched, _ = filepath.Match(pattern, filepath.Base(rel))
+		if rel == "." || rel == "Docksmithfile" {
+			return nil
 		}
-		if matched && !d.IsDir() {
+		if !d.IsDir() && matchesPattern(pattern, rel) {
 			matches = append(matches, rel)
 		}
 		return nil
