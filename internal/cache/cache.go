@@ -47,6 +47,7 @@ func Lookup(key string) (string, bool) {
 }
 
 func Store(key, digest string) error {
+	os.MkdirAll(filepath.Dir(indexPath()), 0755)
 	idx, err := load()
 	if err != nil {
 		return err

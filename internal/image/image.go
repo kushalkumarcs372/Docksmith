@@ -60,6 +60,7 @@ func Load(name, tag string) (*Manifest, error) {
 }
 
 func Save(m *Manifest) error {
+	os.MkdirAll(ImagesDir(), 0755)
 	// Compute digest: serialize with digest="" then hash
 	tmp := *m
 	tmp.Digest = ""

@@ -470,6 +470,20 @@ func layerSize(digest string) int64 {
 	return info.Size()
 }
 
+func hashFileContent(path string) int64 {
+	f, err := os.Open(path)
+	if err != nil {
+		return 0
+	}
+	defer f.Close()
+	h := sha256.New()
+	io.Copy(h, f)
+	// use first 8 bytes of hash as int64 fingerprint
+	b := h.Sum(nil)
+	return int64(b[0])<<56 | int64(b[1])<<48 | int64(b[2])<<40 | int64(b[3])<<32 |
+		int64(b[4])<<24 | int64(b[5])<<16 | int64(b[6])<<8 | int64(b[7])
+}
+
 func snapshotDir(dir string) (map[string]int64, error) {
 	snap := make(map[string]int64)
 	filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
@@ -478,9 +492,10 @@ func snapshotDir(dir string) (map[string]int64, error) {
 		}
 		rel, _ := filepath.Rel(dir, path)
 		info, _ := d.Info()
-		if info != nil {
-			snap[rel] = info.Size()
+		if info == nil || info.IsDir() {
+			return nil
 		}
+		snap[rel] = hashFileContent(path)
 		return nil
 	})
 	return snap, nil
@@ -488,8 +503,8 @@ func snapshotDir(dir string) (map[string]int64, error) {
 
 func diffSnapshot(before, after map[string]int64) []string {
 	var delta []string
-	for path, size := range after {
-		if beforeSize, ok := before[path]; !ok || beforeSize != size {
+	for path, hash := range after {
+		if beforeHash, ok := before[path]; !ok || beforeHash != hash {
 			delta = append(delta, path)
 		}
 	}
