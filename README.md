@@ -3,6 +3,7 @@
 > A Docker-like build and container runtime built from scratch in Go.
 > No Docker. No runc. No containerd. Pure Go + Linux system calls.
 
+[![CI](https://github.com/kushalkumarcs372/Docksmith/actions/workflows/ci.yml/badge.svg)](https://github.com/kushalkumarcs372/Docksmith/actions/workflows/ci.yml)
 [![Go](https://img.shields.io/badge/Go-1.22-blue)](https://go.dev/)
 [![Platform](https://img.shields.io/badge/Platform-Linux-yellow)](https://ubuntu.com/)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
@@ -160,6 +161,29 @@ SHA256 of:
   + all ENV pairs (sorted A-Z) ← "what environment I have"
   + file hashes (COPY only, sorted by path)
 ```
+
+---
+
+## Testing and CI
+
+Unit tests (no root needed):
+
+```bash
+go test -race ./...
+```
+
+They cover cache-key determinism and sensitivity (every input that can change
+a layer must change its key), Docksmithfile parsing, COPY glob matching, delta
+detection, and **layer reproducibility**: two layers built from identical files
+with different modification times must have the same SHA-256 digest.
+
+GitHub Actions (`.github/workflows/ci.yml`) additionally runs the real thing as
+root on an Ubuntu runner:
+
+1. Imports Alpine, does a cold `--no-cache` build then a warm build, fails if the warm build has any cache miss, and posts cold vs. warm build times to the job summary.
+2. Rebuilds twice with `--no-cache` and diffs the layer digests to prove byte-for-byte reproducibility.
+3. Runs the container, checks `-e` env overrides.
+4. **Isolation checks**: a file written to `/tmp` inside the container must not appear on the host, and `ps` inside the container must show only the container's own process as PID 1.
 
 ---
 

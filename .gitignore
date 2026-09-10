@@ -1,4 +1,6 @@
-docksmith
+# Built binary at the repo root only. A bare "docksmith" pattern also matched
+# the cmd/docksmith/ source directory, so main.go was never committed.
+/docksmith
 *.tar.gz
 go1.*
 .docksmith/

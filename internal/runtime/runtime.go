@@ -129,20 +129,20 @@ func ExecuteInNamespace(args []string) {
 		os.Exit(1)
 	}
 
-	cmd := exec.Command(parts[0], parts[1:]...)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Env = fullEnv
-
-	if err := cmd.Run(); err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			os.Exit(exitErr.ExitCode())
-		}
+	// Replace this process with the container command via execve instead of
+	// spawning a child. The command then IS PID 1 inside the new PID
+	// namespace (as in Docker), and no docksmith process lingers inside the
+	// container. Resolve the binary using the container's PATH, after chroot.
+	os.Setenv("PATH", fullEnv[0][len("PATH="):])
+	binary, err := exec.LookPath(parts[0])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "exec failed: %v\n", err)
+		os.Exit(127)
+	}
+	if err := syscall.Exec(binary, parts, fullEnv); err != nil {
 		fmt.Fprintf(os.Stderr, "exec failed: %v\n", err)
 		os.Exit(1)
 	}
-	os.Exit(0)
 }
 
 func ExtractLayers(layers []image.LayerMeta, destDir string) error {

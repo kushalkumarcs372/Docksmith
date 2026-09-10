@@ -60,8 +60,8 @@ type KeyInput struct {
 	PrevDigest  string
 	Instruction string
 	Workdir     string
-	Env         []string   // all accumulated key=value pairs
-	SrcHashes   []string   // COPY only: sorted sha256:path entries
+	Env         []string // all accumulated key=value pairs
+	SrcHashes   []string // COPY only: sorted sha256:path entries
 }
 
 func ComputeKey(in KeyInput) string {
@@ -80,8 +80,12 @@ func ComputeKey(in KeyInput) string {
 	h.Write([]byte(strings.Join(sorted, "\n")))
 	h.Write([]byte("\x00"))
 
-	sort.Strings(in.SrcHashes)
-	h.Write([]byte(strings.Join(in.SrcHashes, "\n")))
+	// Sort a copy: sorting in.SrcHashes in place would silently reorder the
+	// caller's slice.
+	srcs := make([]string, len(in.SrcHashes))
+	copy(srcs, in.SrcHashes)
+	sort.Strings(srcs)
+	h.Write([]byte(strings.Join(srcs, "\n")))
 
 	return fmt.Sprintf("sha256:%x", h.Sum(nil))
 }

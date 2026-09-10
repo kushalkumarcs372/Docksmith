@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Vet, unit tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; echo "run gofmt -w ."; exit 1; }
+      - run: go vet ./...
+      - run: go test -race -v ./...
+      - name: Build CLI
+        run: go build -o docksmith ./cmd/docksmith/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: docksmith-linux-amd64
+          path: docksmith
+
+  integration:
+    name: Build, cache, run, isolation (root, real namespaces)
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: docksmith-linux-amd64
+      - run: chmod +x docksmith
+      - name: Import Alpine base image
+        run: ./setup.sh
+
+      - name: Cold build (expect all cache misses), then warm build (expect hits)
+        run: |
+          s=$(date +%s.%N); sudo ./docksmith build -t myapp:latest ./sample-app --no-cache | tee cold.txt; e=$(date +%s.%N)
+          cold=$(echo "$e - $s" | bc)
+          s=$(date +%s.%N); sudo ./docksmith build -t myapp:latest ./sample-app | tee warm.txt; e=$(date +%s.%N)
+          warm=$(echo "$e - $s" | bc)
+          grep -q "CACHE HIT" warm.txt || { echo "warm build produced no cache hits"; exit 1; }
+          if grep -q "CACHE MISS" warm.txt; then echo "warm build had unexpected cache misses"; exit 1; fi
+          {
+            echo "## Build cache"
+            echo "| Build | Time (s) |"
+            echo "|---|---|"
+            echo "| Cold (--no-cache) | $cold |"
+            echo "| Warm (cached) | $warm |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Reproducibility (two no-cache builds, identical layer digests)
+        run: |
+          layers() { sudo python3 -c "import json;print('\n'.join(l['digest'] for l in json.load(open('/root/.docksmith/images/myapp:latest.json'))['layers']))"; }
+          sudo ./docksmith build -t myapp:latest ./sample-app --no-cache >/dev/null; layers > a.txt
+          sudo ./docksmith build -t myapp:latest ./sample-app --no-cache >/dev/null; layers > b.txt
+          diff a.txt b.txt && echo "layer digests identical across rebuilds"
+
+      - name: Run container and env override
+        run: |
+          sudo ./docksmith run myapp:latest
+          sudo ./docksmith run -e GREETING=Howdy myapp:latest | grep -q Howdy
+
+      - name: Isolation (files written in a container must not reach the host)
+        run: |
+          sudo rm -f /tmp/hostleak.txt
+          sudo ./docksmith run myapp:latest touch /tmp/hostleak.txt | tee out.txt
+          grep -q "exited with code 0" out.txt || { echo "touch failed inside the container"; exit 1; }
+          if [ -e /tmp/hostleak.txt ]; then echo "ISOLATION BREACH: file leaked to host"; exit 1; fi
+          echo "no leak"
+
+      - name: PID namespace (container cannot see host processes)
+        run: |
+          sudo ./docksmith run myapp:latest ps | tee ps.txt
+          procs=$(grep -cvE "PID|exited with code" ps.txt)
+          echo "processes visible inside container: $procs"
+          [ "$procs" -le 2 ] || { echo "container can see host processes"; exit 1; }
+          grep -qE "^ *1 .*ps" ps.txt || { echo "ps is not PID 1"; exit 1; }

@@ -35,9 +35,9 @@ func DocksmithDir() string {
 	return filepath.Join(home, ".docksmith")
 }
 
-func ImagesDir() string  { return filepath.Join(DocksmithDir(), "images") }
-func LayersDir() string  { return filepath.Join(DocksmithDir(), "layers") }
-func CacheDir() string   { return filepath.Join(DocksmithDir(), "cache") }
+func ImagesDir() string { return filepath.Join(DocksmithDir(), "images") }
+func LayersDir() string { return filepath.Join(DocksmithDir(), "layers") }
+func CacheDir() string  { return filepath.Join(DocksmithDir(), "cache") }
 
 func ManifestPath(name, tag string) string {
 	return filepath.Join(ImagesDir(), fmt.Sprintf("%s:%s.json", name, tag))

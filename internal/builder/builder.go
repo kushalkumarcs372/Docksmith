@@ -15,8 +15,8 @@ import (
 	"unicode"
 
 	"github.com/kushal/docksmith/internal/cache"
-	"github.com/kushal/docksmith/internal/runtime"
 	"github.com/kushal/docksmith/internal/image"
+	"github.com/kushal/docksmith/internal/runtime"
 )
 
 type Instruction struct {
@@ -90,14 +90,10 @@ func createLayer(srcDir string, files []string) (string, int64, error) {
 		hdr.ModTime = time.Time{}
 		hdr.AccessTime = time.Time{}
 		hdr.ChangeTime = time.Time{}
-			hdr.Uid = 0
-			hdr.Gid = 0
-			hdr.Uname = ""
-			hdr.Gname = ""
-			hdr.Uid = 0
-			hdr.Gid = 0
-			hdr.Uname = ""
-			hdr.Gname = ""
+		hdr.Uid = 0
+		hdr.Gid = 0
+		hdr.Uname = ""
+		hdr.Gname = ""
 		if err := tw.WriteHeader(hdr); err != nil {
 			return "", 0, err
 		}
@@ -130,8 +126,6 @@ func createLayer(srcDir string, files []string) (string, int64, error) {
 	return digest, size, nil
 }
 
-
-
 func matchesPattern(pattern, rel string) bool {
 	if strings.Contains(pattern, "**") {
 		prefix := strings.TrimSuffix(strings.Split(pattern, "**")[0], "/")
@@ -140,6 +134,13 @@ func matchesPattern(pattern, rel string) bool {
 			return false
 		}
 		if suffix != "" {
+			// "**/*.go" style: the part after ** may itself be a glob, so
+			// match it against the file name, not as a literal suffix.
+			if !strings.Contains(suffix, "/") {
+				if m, _ := filepath.Match(suffix, filepath.Base(rel)); m {
+					return true
+				}
+			}
 			return strings.HasSuffix(rel, suffix)
 		}
 		return true
@@ -171,11 +172,10 @@ func globFiles(contextDir, pattern string) ([]string, error) {
 	return matches, err
 }
 
-
 type BuildOptions struct {
-	Tag       string
-	Context   string
-	NoCache   bool
+	Tag     string
+	Context string
+	NoCache bool
 }
 
 func Build(opts BuildOptions) error {
