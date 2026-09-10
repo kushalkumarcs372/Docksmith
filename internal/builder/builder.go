@@ -358,9 +358,7 @@ func Build(opts BuildOptions) error {
 			elapsed := time.Since(start)
 			fmt.Printf("  [CACHE MISS] %.2fs\n", elapsed.Seconds())
 
-			if !opts.NoCache {
-				cache.Store(cacheKey, digest)
-			}
+			cache.Store(cacheKey, digest)
 			cacheMissed = true
 			manifest.Layers = append(manifest.Layers, image.LayerMeta{
 				Digest:    digest,
@@ -430,9 +428,7 @@ func Build(opts BuildOptions) error {
 			elapsed := time.Since(start)
 			fmt.Printf("  [CACHE MISS] %.2fs\n", elapsed.Seconds())
 
-			if !opts.NoCache {
-				cache.Store(cacheKey, digest)
-			}
+			cache.Store(cacheKey, digest)
 			cacheMissed = true
 			manifest.Layers = append(manifest.Layers, image.LayerMeta{
 				Digest:    digest,
