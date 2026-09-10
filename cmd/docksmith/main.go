@@ -77,7 +77,9 @@ Examples:
 //
 // Parsed by hand (not the stdlib "flag" package) because --no-cache needs
 // to work whether it appears before or after the context directory, e.g.:
-//   docksmith build -t myapp:latest ./sample-app --no-cache
+//
+//	docksmith build -t myapp:latest ./sample-app --no-cache
+//
 // stdlib flag.Parse stops at the first non-flag argument, which would
 // silently ignore --no-cache in that ordering.
 func cmdBuild(args []string) {
